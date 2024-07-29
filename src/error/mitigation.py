@@ -4,7 +4,6 @@ from tensorcircuit.noisemodel import NoiseConf
 from tensorcircuit.noisemodel import circuit_with_noise
 import numpy as np
 from scipy.optimize import minimize
-from tensorcircuit.cloud import apis
 import mthree
 
 def get_readout_error(n):
