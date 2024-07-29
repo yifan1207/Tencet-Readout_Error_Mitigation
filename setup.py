@@ -3,8 +3,8 @@ from setuptools import setup, find_packages
 setup(
   name="Readout_Error_Mitigation",
   version="0.1",
-  author="Your Name",
-  author_email="your.email@example.com",
+  author="Error Mitigation Group",
+  author_email="n/a",
   description="A library for readout error mitigation",
   long_description=open('README.md').read(),
   long_description_content_type='text/markdown',
