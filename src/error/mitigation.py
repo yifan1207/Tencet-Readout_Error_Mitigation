@@ -18,39 +18,46 @@ def get_readout_error(n):
 
     return readout_error 
 
-def get_A(n, l, r, online_mode):
-
+def get_A(n, qubit_group, online_mode):
     shots = 10000
-
-    A = np.zeros((2 ** (r - l), 2 ** (r - l)))
-
-    for i in range(0, (2 ** (r - l))) :
-
+    group_size = len(qubit_group)
+    A = np.zeros((2 ** group_size, 2 ** group_size))
+    
+    for i in range(0, (2 ** group_size)):
         circ = tc.Circuit(n)
-
-        for j in range(0, r - l):
-            if ((i & (2 ** j)) != 0) :
-                circ.x(r - 1 - j)
-
-        if online_mode == 1:
-            t = apis.submit_task(provider="tencent", device="tianji_s2", circuit=circ, shots=shots)
-            res = t.results()
-        else :
-            res = circ.sample(shots, format = "count_dict_bin", readout_error=get_readout_error(n), allow_state=True) 
-
-        for str,c in res.items():
-            A[int(str[l : r], 2)][i] += c / shots
-
+        for j in range(group_size):
+            if ((i & (2 ** j)) != 0):
+                circ.x(qubit_group[j])
+    
+    if online_mode == 1:
+        t = apis.submit_task(provider="tencent", device="tianji_s2", circuit=circ, shots=shots)
+        res = t.results()
+    else:
+        res = circ.sample(shots, format="count_dict_bin", readout_error=get_readout_error(n), allow_state=True)
+    
+    for str, c in res.items():
+        index = int(''.join([str[qubit_group[k]] for k in range(group_size)]), 2)
+        A[index][i] += c / shots
+    
     return A
 
-def get_Aplus(n, online_mode):
-    A_plus = np.ones((1, 1))
-    A_plus = np.kron(A_plus, np.linalg.pinv(get_A(n, 0, min(4, n),online_mode)))
-    if n > 4 :
-        A_plus = np.kron(A_plus, np.linalg.pinv(get_A(n, 4, min(8, n),online_mode)))
-    if n > 8 :
-        A_plus = np.kron(A_plus, np.linalg.pinv(get_A(n, 8, n),online_mode))
-    return A_plus
+def get_Aplus(n, qubit_indices, online_mode):
+    
+    groups = [
+        [i for i in qubit_indices if i < 4],
+        [i for i in qubit_indices if 4 <= i < 8],
+        [i for i in qubit_indices if 8 <= i < 12]
+    ]
+    
+    A_Plus = np.ones((1,1))
+    
+    for group in groups:
+        if group:
+            A_matrix = np.linalg.pinv(get_A(n, group, online_mode))
+            A_plus = np.kron(A_plus, A_matrix)
+
+return A_plus
+
 
 def vector_to_dict(vector):
     n = len(vector)
