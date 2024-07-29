@@ -7,13 +7,20 @@ from scipy.optimize import minimize
 from tensorcircuit.cloud import apis
 import mthree
 
+def get_readout_error(n):
+    base_error = [0.95, 0.9]
+    readout_error = []
 
-n = 13
-shots = 10000
-online_mode = 0
-np.set_printoptions(suppress=True, precision=6)
+    for j in range(n):
+        random_change_0 = 0.01 * np.random.rand()
+        random_change_1 = 0.01 * np.random.rand()
+        readout_error.append([base_error[0] - random_change_0, base_error[1] - random_change_1])
 
-def get_A(l, r):
+    return readout_error 
+
+def get_A(n, l, r, online_mode):
+
+    shots = 10000
 
     A = np.zeros((2 ** (r - l), 2 ** (r - l)))
 
@@ -29,61 +36,21 @@ def get_A(l, r):
             t = apis.submit_task(provider="tencent", device="tianji_s2", circuit=circ, shots=shots)
             res = t.results()
         else :
-            res = circ.sample(shots, format = "count_dict_bin", readout_error=readout_error, allow_state=True) 
+            res = circ.sample(shots, format = "count_dict_bin", readout_error=get_readout_error(n), allow_state=True) 
 
         for str,c in res.items():
             A[int(str[l : r], 2)][i] += c / shots
 
     return A
 
-def get_readout_error(n):
-    base_error = [0.95, 0.9]
-    readout_error = []
-
-    for j in range(n):
-        random_change_0 = 0.01 * np.random.rand()
-        random_change_1 = 0.01 * np.random.rand()
-        readout_error.append([base_error[0] - random_change_0, base_error[1] - random_change_1])
-
-    return readout_error 
-
-readout_error = get_readout_error(n)
-
-A_plus = np.ones((1, 1))
-A_plus = np.kron(A_plus, np.linalg.pinv(get_A(0, min(4, n))))
-if n > 4 :
-    A_plus = np.kron(A_plus, np.linalg.pinv(get_A(4, min(8, n))))
-if n > 8 :
-    A_plus = np.kron(A_plus, np.linalg.pinv(get_A(8, n)))
-# A_plus = np.kron(A_plus, np.linalg.pinv(get_A(0, 9)))
-# A_plus = np.kron(A_plus, np.linalg.pinv(get_A(0, 2)))
-
-#check_circ = tc.Circuit(n)
-#check_circ.h(1)
-#check_circ.h(3)
-#check_circ.x(4)
-#check_circ.cz(1,3)
-#check_circ.cx(3,5)
-#check_circ.h(8)
-#print(check_circ.draw())
-
-# res = check_circ.sample(shots, format = "count_dict_bin", allow_state=True)
-# real_x = np.zeros(2 ** n)
-# for str,c in res.items():
-#     real_x[int(str, 2)] = c / shots
-# print(real_x)
-def res (res, n):
-	##if online_mode == 1 :
-	    ##t = apis.submit_task(provider="tencent", device="tianji_s2", circuit=check_circ, shots=shots)
-	    ##res = t.results()
-	##else :
-	    ##res = check_circ.sample(shots, format = "count_dict_bin", readout_error=readout_error, allow_state=True)
-	y = np.zeros(2 ** n)
-	for str,c in res.items():
-	    y[int(str, 2)] = c
-
-	x = A_plus @ y
-	print(x)
+def get_Aplus(n, online_mode):
+    A_plus = np.ones((1, 1))
+    A_plus = np.kron(A_plus, np.linalg.pinv(get_A(n, 0, min(4, n))))
+    if n > 4 :
+        A_plus = np.kron(A_plus, np.linalg.pinv(get_A(n, 4, min(8, n))))
+    if n > 8 :
+        A_plus = np.kron(A_plus, np.linalg.pinv(get_A(n, 8, n)))
+    return A_plus
 
 def vector_to_dict(vector):
     n = len(vector)
@@ -96,4 +63,9 @@ def vector_to_dict(vector):
 
     return result_dict
 
-print(mthree.classes.QuasiDistribution(vector_to_dict(x)).nearest_probability_distribution())
+def get_res(n, res, A_plus):
+    y = np.zeros(2 ** n)
+    for str,c in res.items():
+        y[int(str, 2)] = c
+
+    return mthree.classes.QuasiDistribution(A_plus @ y).nearest_probability_distribution()
