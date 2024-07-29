@@ -45,11 +45,11 @@ def get_A(n, l, r, online_mode):
 
 def get_Aplus(n, online_mode):
     A_plus = np.ones((1, 1))
-    A_plus = np.kron(A_plus, np.linalg.pinv(get_A(n, 0, min(4, n))))
+    A_plus = np.kron(A_plus, np.linalg.pinv(get_A(n, 0, min(4, n),online_mode)))
     if n > 4 :
-        A_plus = np.kron(A_plus, np.linalg.pinv(get_A(n, 4, min(8, n))))
+        A_plus = np.kron(A_plus, np.linalg.pinv(get_A(n, 4, min(8, n),online_mode)))
     if n > 8 :
-        A_plus = np.kron(A_plus, np.linalg.pinv(get_A(n, 8, n)))
+        A_plus = np.kron(A_plus, np.linalg.pinv(get_A(n, 8, n),online_mode))
     return A_plus
 
 def vector_to_dict(vector):
@@ -68,4 +68,4 @@ def get_res(n, res, A_plus):
     for str,c in res.items():
         y[int(str, 2)] = c
 
-    return mthree.classes.QuasiDistribution(A_plus @ y).nearest_probability_distribution()
+    return mthree.classes.QuasiDistribution(vector_to_dict(A_plus @ y)).nearest_probability_distribution()
