@@ -55,7 +55,7 @@ def get_Aplus(n, qubit_indices, online_mode):
             A_matrix = np.linalg.pinv(get_A(n, group, online_mode))
             A_plus = np.kron(A_plus, A_matrix)
 
-return A_plus
+    return A_plus
 
 
 def vector_to_dict(vector):
@@ -68,10 +68,19 @@ def vector_to_dict(vector):
         result_dict[binary_key] = vector[i]
 
     return result_dict
-
+    
+def function(xf, x):
+    return np.linalg.norm(xf - x)
+    
 def get_res(n, res, A_plus):
     y = np.zeros(2 ** n)
     for str,c in res.items():
         y[int(str, 2)] = c
-
-    return mthree.classes.QuasiDistribution(vector_to_dict(A_plus @ y)).nearest_probability_distribution()
+    y = A_plus @ y
+    constraints = ({'type': 'eq', 'fun': lambda xf: np.sum(xf) - 1})
+    bounds = [(0, None) for _ in y]
+    
+    initial_guess = np.full_like(y, 1/len(y))
+    result = minimize(function, initial_guess,args=(y,), constraints=constraints, bounds=bounds)
+    
+    return mthree.classes.QuasiDistribution(vector_to_dict(y)).nearest_probability_distribution()
